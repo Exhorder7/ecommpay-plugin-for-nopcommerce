@@ -19,6 +19,7 @@ using Nop.Services.Messages;
 using Nop.Services.Payments;
 using Nop.Services.Plugins;
 using Nop.Web.Framework.Infrastructure;
+using Nop.Web.Framework.UI;
 
 namespace Nop.Plugin.Payments.Ecommpay
 {
@@ -32,6 +33,7 @@ namespace Nop.Plugin.Payments.Ecommpay
         private readonly ILocalizationService _localizationService;
         private readonly ILogger _logger;
         private readonly IPaymentService _paymentService;
+        private readonly IPageHeadBuilder _pageHeadBuilder;
         private readonly INotificationService _notificationService;
         private readonly IUrlHelperFactory _urlHelperFactory;
         private readonly ISettingService _settingService;
@@ -49,6 +51,7 @@ namespace Nop.Plugin.Payments.Ecommpay
             ILocalizationService localizationService,
             ILogger logger,
             IPaymentService paymentService,
+            IPageHeadBuilder pageHeadBuilder,
             INotificationService notificationService,
             IUrlHelperFactory urlHelperFactory,
             ISettingService settingService,
@@ -62,6 +65,7 @@ namespace Nop.Plugin.Payments.Ecommpay
             _localizationService = localizationService;
             _logger = logger;
             _paymentService = paymentService;
+            _pageHeadBuilder = pageHeadBuilder;
             _notificationService = notificationService;
             _urlHelperFactory = urlHelperFactory;
             _settingService = settingService;
@@ -164,6 +168,9 @@ namespace Nop.Plugin.Payments.Ecommpay
             var result = await _ecommpayService.RefundOrderAsync(order, amountToRefund);
             if (result.Success)
             {
+                //change error notification to warning
+                _pageHeadBuilder.AddCssFileParts(ResourceLocation.Head, @"~/Plugins/Payments.ECommPay/Areas/Admin/Content/styles.css", string.Empty);
+
                 return new RefundPaymentResult
                 {
                     Errors = new List<string> { await _localizationService.GetResourceAsync("Plugins.Payments.Ecommpay.RefundIsCreated") }
