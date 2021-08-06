@@ -8,6 +8,8 @@
     Html.AppendScriptParts("~/lib_npm/jquery-tageditor/jquery.caret.min.js");
 }
 
+@await Component.InvokeAsync("StoreScopeConfiguration")
+
 <form asp-controller="EcommpayConfiguration" asp-action="Configure" method="post">
     <div class="cards-group">
         <div class="card card-default">
@@ -101,7 +103,9 @@
                         <span asp-validation-for="AdditionalParameterSystemNames"></span>
                         <script>
                             $(document).ready(function () {
-                                var additionalParameterSystemNamesInput = $("#@Html.IdFor(model => model.AdditionalParameterSystemNames)").kendoMultiSelect({
+                                $("#@Html.IdFor(model => model.AdditionalParameterSystemNames)").kendoMultiSelect({
+                                    autoClose: false,
+                                    filter: "contains",
                                     select: function (e) {
                                         var current = this.value();
 
@@ -120,24 +124,7 @@
                                         if (this.value().length === 0)
                                             this.value(["0"]);
                                     }
-                                }).data("kendoMultiSelect");
-
-                                additionalParameterSystemNamesInput.setOptions({
-                                    autoClose: false,
-                                    filter: "contains"
                                 });
-
-                                @if (Model.AvailableAdditionalParameterSystemNames.Count == 0)
-                                {
-                                    <text>
-                                        additionalParameterSystemNamesInput.setOptions({
-                                            enable: false,
-                                            placeholder: '@T("Confiti.Nop.Plugin.ERP.MoySklad.Settings.Fields.AssortmentStores.NoStores")'
-                                        });
-                                        additionalParameterSystemNamesInput._placeholder();
-                                        additionalParameterSystemNamesInput._enable();
-                                    </text>
-                                }
                             });
                         </script>
                     </div>

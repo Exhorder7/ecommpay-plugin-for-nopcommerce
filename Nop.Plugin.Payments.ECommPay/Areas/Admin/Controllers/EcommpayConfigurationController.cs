@@ -11,6 +11,7 @@ using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Security;
+using Nop.Services.Stores;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc.Filters;
@@ -29,6 +30,7 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
         private readonly INotificationService _notificationService;
         private readonly ISettingService _settingService;
         private readonly IStoreContext _storeContext;
+        private readonly IStoreService _storeService;
         private readonly IUrlHelperFactory _urlHelperFactory;
         private readonly IWebHelper _webHelper;
 
@@ -42,6 +44,7 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
             INotificationService notificationService,
             ISettingService settingService,
             IStoreContext storeContext,
+            IStoreService storeService,
             IUrlHelperFactory urlHelperFactory,
             IWebHelper webHelper
         )
@@ -51,6 +54,7 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
             _notificationService = notificationService;
             _settingService = settingService;
             _storeContext = storeContext;
+            _storeService = storeService;
             _urlHelperFactory = urlHelperFactory;
             _webHelper = webHelper;
         }
@@ -76,19 +80,22 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
             {
                 ActiveStoreScopeConfiguration = storeScope,
                 IsTestMode = ecommpayPaymentSettings.IsTestMode,
-                TestProjectId = ecommpayPaymentSettings.TestProjectId,
+                TestProjectId = ecommpayPaymentSettings.TestProjectId.ToString(),
                 TestSecretKey = ecommpayPaymentSettings.TestSecretKey,
-                ProductionProjectId = ecommpayPaymentSettings.ProductionProjectId,
+                ProductionProjectId = ecommpayPaymentSettings.ProductionProjectId.ToString(),
                 ProductionSecretKey = ecommpayPaymentSettings.ProductionSecretKey,
                 PaymentFlowTypeId = (int)ecommpayPaymentSettings.PaymentFlowType,
                 AdditionalParameterSystemNames = ecommpayPaymentSettings.AdditionalParameterSystemNames,
                 AdditionalFee = ecommpayPaymentSettings.AdditionalFee,
                 AdditionalFeePercentage = ecommpayPaymentSettings.AdditionalFeePercentage,
-                CallbackEndpoint = _urlHelperFactory
-                    .GetUrlHelper(ControllerContext)
-                    .RouteUrl(Defaults.CallbackRouteName, null, _webHelper.GetCurrentRequestProtocol()),
             };
-            
+
+            var urlHelper = _urlHelperFactory.GetUrlHelper(ControllerContext);
+            var store = storeScope > 0
+                ? await _storeService.GetStoreByIdAsync(storeScope)
+                : await _storeContext.GetCurrentStoreAsync();
+            model.CallbackEndpoint = $"{store.Url.TrimEnd('/')}{urlHelper.RouteUrl(Defaults.CallbackRouteName)}".ToLowerInvariant();
+
             var availablePaymentFlowTypes = await ecommpayPaymentSettings.PaymentFlowType.ToSelectListAsync();
             foreach (var paymentFlowType in availablePaymentFlowTypes)
                 model.AvailablePaymentFlowTypes.Add(paymentFlowType);
@@ -132,9 +139,9 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
 
             //save settings
             ecommpayPaymentSettings.IsTestMode = model.IsTestMode;
-            ecommpayPaymentSettings.TestProjectId = model.TestProjectId;
+            ecommpayPaymentSettings.TestProjectId = int.Parse(model.TestProjectId);
             ecommpayPaymentSettings.TestSecretKey = model.TestSecretKey;
-            ecommpayPaymentSettings.ProductionProjectId = model.ProductionProjectId;
+            ecommpayPaymentSettings.ProductionProjectId = int.Parse(model.ProductionProjectId);
             ecommpayPaymentSettings.ProductionSecretKey = model.ProductionSecretKey;
             ecommpayPaymentSettings.PaymentFlowType = (PaymentFlowType)model.PaymentFlowTypeId;
             ecommpayPaymentSettings.AdditionalParameterSystemNames = model.AdditionalParameterSystemNames.ToList();

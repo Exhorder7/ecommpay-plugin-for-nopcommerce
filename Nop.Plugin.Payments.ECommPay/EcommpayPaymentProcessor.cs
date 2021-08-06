@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Nop.Core;
 using Nop.Core.Domain.Cms;
 using Nop.Core.Domain.Orders;
-using Nop.Core.Domain.Payments;
 using Nop.Plugin.Payments.Ecommpay.Domain;
 using Nop.Plugin.Payments.Ecommpay.Extensions;
 using Nop.Plugin.Payments.Ecommpay.Services;
@@ -23,9 +22,6 @@ using Nop.Web.Framework.Infrastructure;
 
 namespace Nop.Plugin.Payments.Ecommpay
 {
-    /// <summary>
-    /// Rename this file and change to the correct type
-    /// </summary>
     public class EcommpayPaymentProcessor : BasePlugin, IPaymentMethod, IWidgetPlugin
     {
         #region Fields
@@ -159,18 +155,18 @@ namespace Nop.Plugin.Payments.Ecommpay
             if (refundPaymentRequest is null)
                 throw new ArgumentNullException(nameof(refundPaymentRequest));
 
+            var order = refundPaymentRequest.Order;
             var amountToRefund = refundPaymentRequest.IsPartialRefund
                 ? (decimal?)refundPaymentRequest.AmountToRefund
                 : null;
-            var order = refundPaymentRequest.Order;
+
+            // send refund request and wait for ECommPay response via the webhook request
             var result = await _ecommpayService.RefundOrderAsync(order, amountToRefund);
             if (result.Success)
             {
                 return new RefundPaymentResult
                 {
-                    NewPaymentStatus = refundPaymentRequest.IsPartialRefund
-                        ? PaymentStatus.PartiallyRefunded
-                        : PaymentStatus.Refunded
+                    Errors = new List<string> { await _localizationService.GetResourceAsync("Plugins.Payments.Ecommpay.RefundIsCreated") }
                 };
             }
 
@@ -300,13 +296,15 @@ namespace Nop.Plugin.Payments.Ecommpay
                 ["Plugins.Payments.Ecommpay.Fields.TestProjectId"] = "Test project ID",
                 ["Plugins.Payments.Ecommpay.Fields.TestProjectId.Hint"] = "Enter the project ID provided by ECOMMPAY for testing purposes.",
                 ["Plugins.Payments.Ecommpay.Fields.TestProjectId.Required"] = "The test project ID is required.",
+                ["Plugins.Payments.Ecommpay.Fields.TestProjectId.ShouldBeNumeric"] = "The test project ID must be numeric.",
                 ["Plugins.Payments.Ecommpay.Fields.ProductionProjectId"] = "Production project ID",
                 ["Plugins.Payments.Ecommpay.Fields.ProductionProjectId.Hint"] = "Enter the project ID provided by ECOMMPAY for production environment.",
                 ["Plugins.Payments.Ecommpay.Fields.ProductionProjectId.Required"] = "The production project ID is required.",
+                ["Plugins.Payments.Ecommpay.Fields.ProductionProjectId.ShouldBeNumeric"] = "The production project ID must be numeric.",
                 ["Plugins.Payments.Ecommpay.Fields.TestSecretKey"] = "Test secret key",
                 ["Plugins.Payments.Ecommpay.Fields.TestSecretKey.Hint"] = "Enter the secret key provided by ECOMMPAY for testing purposes.",
                 ["Plugins.Payments.Ecommpay.Fields.TestSecretKey.Required"] = "The test secret key is required.",
-                ["Plugins.Payments.Ecommpay.Fields.ProductionSecretKey"] = "Production secret key.",
+                ["Plugins.Payments.Ecommpay.Fields.ProductionSecretKey"] = "Production secret key",
                 ["Plugins.Payments.Ecommpay.Fields.ProductionSecretKey.Hint"] = "Enter the secret key provided by ECOMMPAY for production environment.",
                 ["Plugins.Payments.Ecommpay.Fields.ProductionSecretKey.Required"] = "The production secret key is required.",
                 ["Plugins.Payments.Ecommpay.Fields.PaymentFlowTypeId"] = "Payment flow",
@@ -319,6 +317,7 @@ namespace Nop.Plugin.Payments.Ecommpay
                 ["Plugins.Payments.Ecommpay.Fields.AdditionalFeePercentage.Hint"] = "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.",
                 ["Plugins.Payments.Ecommpay.FailedOrderCreation"] = "Error when processing the payment transaction. Please try again or contact with store owner.",
                 ["Plugins.Payments.Ecommpay.PaymentMethodDescription"] = "Pay by ECommPay",
+                ["Plugins.Payments.Ecommpay.RefundIsCreated"] = "Refund request is sended. The refund performing period depends on the issuing bank and may take a long time. The request result will be displayed in the order notes.",
             });
 
             await base.InstallAsync();

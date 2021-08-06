@@ -123,9 +123,9 @@ namespace Nop.Plugin.Payments.Ecommpay.Services
             var validationResult = await validator.ValidateAsync(new ConfigurationModel
             {
                 IsTestMode = _ecommpayPaymentSettings.IsTestMode,
-                TestProjectId = _ecommpayPaymentSettings.TestProjectId,
+                TestProjectId = _ecommpayPaymentSettings.TestProjectId.ToString(),
                 TestSecretKey = _ecommpayPaymentSettings.TestSecretKey,
-                ProductionProjectId = _ecommpayPaymentSettings.ProductionProjectId,
+                ProductionProjectId = _ecommpayPaymentSettings.ProductionProjectId.ToString(),
                 ProductionSecretKey = _ecommpayPaymentSettings.ProductionSecretKey,
             });
 
@@ -348,25 +348,28 @@ namespace Nop.Plugin.Payments.Ecommpay.Services
                 return (false, errors);
             }
 
-            // only sale operations
-            if (request?.Operation?.Type != "sale")
-                return (true, errors);
+            return request?.Operation?.Type switch
+            {
+                "sale" => await ProcessSaleOperationAsync(request),
+                "refund" => await ProcessRefundOperationAsync(request),
+                _ => (true, errors)
+            };
+        }
+
+        #endregion
+
+        #region Utilities
+
+        private async Task<(bool Success, IList<string> Errors)> ProcessSaleOperationAsync(WebHookRequest request)
+        {
+            var errors = new List<string>();
 
             // only successful payments
-            if (request?.Payment?.Status != "success")
+            if (request.Operation.Status != "success")
                 return (true, errors);
 
-            if (string.IsNullOrWhiteSpace(request?.Payment?.Id))
-            {
-                errors.Add("The payment id should not be null or white space.");
-                return (false, errors);
-            }
-
-            if (!Guid.TryParse(request?.Payment?.Id, out var orderGuid))
-            {
-                errors.Add($"The payment id '{request.Payment.Id}' is invalid.");
-                return (false, errors);
-            }
+            if (!Guid.TryParse(request.Payment?.Id, out var orderGuid))
+                return (true, errors);
 
             var order = await _orderService.GetOrderByGuidAsync(orderGuid);
             if (order == null)
@@ -376,16 +379,10 @@ namespace Nop.Plugin.Payments.Ecommpay.Services
             }
 
             if (order.Deleted)
-            {
-                errors.Add($"The order '{order.CustomOrderNumber}' was deleted.");
-                return (false, errors);
-            }
+                return (true, errors);
 
             if (!_orderProcessingService.CanMarkOrderAsPaid(order))
-            {
-                errors.Add($"The order '{order.CustomOrderNumber}' already marked as 'Paid'.");
-                return (false, errors);
-            }
+                return (true, errors);
 
             order.CaptureTransactionId = orderGuid.ToString();
             await _orderProcessingService.MarkOrderAsPaidAsync(order);
@@ -393,9 +390,55 @@ namespace Nop.Plugin.Payments.Ecommpay.Services
             return (true, errors);
         }
 
-        #endregion
+        private async Task<(bool Success, IList<string> Errors)> ProcessRefundOperationAsync(WebHookRequest request)
+        {
+            var errors = new List<string>();
 
-        #region Utilities
+            if (!Guid.TryParse(request.Payment?.Id, out var orderGuid))
+                return (true, errors);
+
+            var order = await _orderService.GetOrderByGuidAsync(orderGuid);
+            if (order == null)
+            {
+                errors.Add($"The order not found by the specified payment ID '{orderGuid}'.");
+                return (false, errors);
+            }
+
+            if (order.Deleted)
+                return (true, errors);
+
+            if (request.Operation.InitialSum == null)
+                return (true, errors);
+
+            var amountToRefund = (decimal)request.Operation.InitialSum.Amount / 100;
+
+            await _orderService.InsertOrderNoteAsync(new OrderNote
+            {
+                OrderId = order.Id,
+                DisplayToCustomer = false,
+                CreatedOnUtc = DateTime.UtcNow,
+                Note = $"The refund reqest is processed with status '{request.Operation.Status}'.{Environment.NewLine}" +
+                    $"The code '{request.Operation.Code}'.{Environment.NewLine}" +
+                    $"The message '{request.Operation.Message}'.{Environment.NewLine}" +
+                    $"The amount '{amountToRefund} {request.Operation.InitialSum.Currency}'."
+            });
+
+            if (request.Operation.Status != "success")
+                return (true, errors);
+
+            if (order.OrderTotal == amountToRefund)
+            {
+                if (_orderProcessingService.CanRefundOffline(order))
+                    await _orderProcessingService.RefundOfflineAsync(order);
+            }
+            else
+            {
+                if (_orderProcessingService.CanPartiallyRefundOffline(order, amountToRefund))
+                    await _orderProcessingService.PartiallyRefundOfflineAsync(order, amountToRefund);
+            }
+
+            return (true, errors);
+        }
 
         private async Task PrepareCommonQueryAsync(CreatePaymentPageModel model)
         {

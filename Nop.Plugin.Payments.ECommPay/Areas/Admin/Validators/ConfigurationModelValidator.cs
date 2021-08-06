@@ -19,6 +19,11 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Validators
                 .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Payments.Ecommpay.Fields.TestProjectId.Required"))
                 .When(model => model.IsTestMode);
 
+            RuleFor(model => model.TestProjectId)
+                .Must(value => int.TryParse(value, out _))
+                .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Payments.Ecommpay.Fields.TestProjectId.ShouldBeNumeric"))
+                .When(model => model.IsTestMode);
+
             RuleFor(model => model.TestSecretKey)
                 .NotEmpty()
                 .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Payments.Ecommpay.Fields.TestSecretKey.Required"))
@@ -28,6 +33,11 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Validators
                 .NotEmpty()
                 .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Payments.Ecommpay.Fields.ProductionProjectId.Required"))
                 .When(model => !model.IsTestMode);
+
+            RuleFor(model => model.ProductionProjectId)
+                .Must(value => int.TryParse(value, out _))
+                .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Payments.Ecommpay.Fields.ProductionProjectId.ShouldBeNumeric"))
+                .When(model => model.IsTestMode);
 
             RuleFor(model => model.ProductionSecretKey)
                 .NotEmpty()

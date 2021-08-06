@@ -26,14 +26,14 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Models
         /// Gets or sets a test project ID 
         /// </summary>
         [NopResourceDisplayName("Plugins.Payments.Ecommpay.Fields.TestProjectId")]
-        public int TestProjectId { get; set; }
+        public string TestProjectId { get; set; }
         public bool TestProjectId_OverrideForStore { get; set; }
 
         /// <summary>
         /// Gets or sets a production project ID
         /// </summary>
         [NopResourceDisplayName("Plugins.Payments.Ecommpay.Fields.ProductionProjectId")]
-        public int ProductionProjectId { get; set; }
+        public string ProductionProjectId { get; set; }
         public bool ProductionProjectId_OverrideForStore { get; set; }
 
         /// <summary>
