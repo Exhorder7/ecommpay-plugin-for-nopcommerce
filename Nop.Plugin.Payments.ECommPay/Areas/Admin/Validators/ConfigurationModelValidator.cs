@@ -37,7 +37,7 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Validators
             RuleFor(model => model.ProductionProjectId)
                 .Must(value => int.TryParse(value, out _))
                 .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Payments.Ecommpay.Fields.ProductionProjectId.ShouldBeNumeric"))
-                .When(model => model.IsTestMode);
+                .When(model => !model.IsTestMode);
 
             RuleFor(model => model.ProductionSecretKey)
                 .NotEmpty()

@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Nop.Core;
 using Nop.Plugin.Payments.Ecommpay.Areas.Admin.Models;
 using Nop.Plugin.Payments.Ecommpay.Domain;
@@ -31,8 +30,6 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
         private readonly ISettingService _settingService;
         private readonly IStoreContext _storeContext;
         private readonly IStoreService _storeService;
-        private readonly IUrlHelperFactory _urlHelperFactory;
-        private readonly IWebHelper _webHelper;
 
         #endregion
 
@@ -44,9 +41,7 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
             INotificationService notificationService,
             ISettingService settingService,
             IStoreContext storeContext,
-            IStoreService storeService,
-            IUrlHelperFactory urlHelperFactory,
-            IWebHelper webHelper
+            IStoreService storeService
         )
         {
             _permissionService = permissionService;
@@ -55,8 +50,6 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
             _settingService = settingService;
             _storeContext = storeContext;
             _storeService = storeService;
-            _urlHelperFactory = urlHelperFactory;
-            _webHelper = webHelper;
         }
 
         #endregion
@@ -90,11 +83,10 @@ namespace Nop.Plugin.Payments.Ecommpay.Areas.Admin.Controllers
                 AdditionalFeePercentage = ecommpayPaymentSettings.AdditionalFeePercentage,
             };
 
-            var urlHelper = _urlHelperFactory.GetUrlHelper(ControllerContext);
             var store = storeScope > 0
                 ? await _storeService.GetStoreByIdAsync(storeScope)
                 : await _storeContext.GetCurrentStoreAsync();
-            model.CallbackEndpoint = $"{store.Url.TrimEnd('/')}{urlHelper.RouteUrl(Defaults.CallbackRouteName)}".ToLowerInvariant();
+            model.CallbackEndpoint = $"{store.Url.TrimEnd('/')}{Url.RouteUrl(Defaults.CallbackRouteName)}".ToLowerInvariant();
 
             var availablePaymentFlowTypes = await ecommpayPaymentSettings.PaymentFlowType.ToSelectListAsync();
             foreach (var paymentFlowType in availablePaymentFlowTypes)
